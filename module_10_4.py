@@ -8,7 +8,6 @@ class Table:
     def __init__(self, number):
         self.number = number
         self.guest = None
-        self.lock = threading.Lock()
 
 
 class Guest(threading.Thread):
@@ -17,37 +16,30 @@ class Guest(threading.Thread):
         self.name = name
 
     def run(self):
-        eating_time = random.randint(3, 10)
-        time.sleep(eating_time)
+        time.sleep(random.randint(3, 10))
 
 
 class Cafe:
     def __init__(self, *tables):
-        self.guest = None
         self.queue = Queue()
         self.tables = tables
-        self.lock = threading.Lock()
 
     def guest_arrival(self, *guests):
         for guest in guests:
-            assigned_table = None
-            with self.lock:
-                for table in self.tables:
-                    if table.guest is None:
-                        table.guest = guest
-                        assigned_table = table
-                        break
-                if assigned_table:
+            for table in self.tables:
+                if table.guest is None:
+                    table.guest = guest
                     guest.start()
                     print(f'{guest.name} сел(-а) за стол номер {table.number}')
-                else:
-                    self.queue.put(guest)
-                    print(f'{guest.name} в очереди')
+                    break
+            else:
+                self.queue.put(guest)
+                print(f'{guest.name} в очереди')
 
     def discuss_guests(self):
-        while not self.queue.empty() or any(table.guest is not None for table in self.tables):
+        while not self.queue.empty() or any(table.guest for table in self.tables):
             for table in self.tables:
-                if table.guest is not None and table.guest.is_alive():
+                if table.guest and not table.guest.is_alive():
                     print(f'{table.guest.name} покушал(-а) и ушёл(ушла)')
                     print(f'Стол номер {table.number} свободен')
                     table.guest = None
